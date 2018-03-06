@@ -52,6 +52,7 @@ define([
         },
 
         changeInputBox: function() {
+            this._clearValidations();
             this.inputBox.value = this.obj.get(this.name);
         },
 
@@ -102,8 +103,6 @@ define([
         },
 
         executeMicroflow: function(mf) {
-            this._clearValidations();
-            
             if (mf && this.obj) {
                 mx.data.action({
                     store: {
