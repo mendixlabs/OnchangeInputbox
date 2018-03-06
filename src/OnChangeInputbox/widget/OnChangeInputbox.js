@@ -10,13 +10,15 @@ define([
 
         //CACHES
         _hasStarted: false,
-        subHandle: null,
         divNode: "",
         inputBox: "",
         handle: "",
         delay_timer: "",
         currValue: "",
         obj: null,
+
+        // Internal variables. Non-primitives created in the prototype are shared between all widget instances.
+        _alertDiv: null,
 
         startup: function() {
             if (this._hasStarted) {
@@ -41,22 +43,8 @@ define([
 
         update: function(obj, callback) {
             this.obj = obj;
-            if (this.subHandle) {
-                this.unsubscribe(this.subHandle);
-                this.subHandle = null;
-            }
-
-            if (this.obj) {
-                // in some cases update may be called with a null obj
-                this.subHandle = this.subscribe({
-                    guid: obj.getGuid(),
-                    attr: this.name,
-                    callback: dojoLang.hitch(this, function(obj) {
-                        this.changeInputBox();
-                    })
-                });
-                this.changeInputBox();
-            }
+            this._resetSubscriptions();
+            this._clearValidations();
 
             if (callback) {
                 callback();
@@ -114,6 +102,8 @@ define([
         },
 
         executeMicroflow: function(mf) {
+            this._clearValidations();
+            
             if (mf && this.obj) {
                 mx.data.action({
                     store: {
@@ -129,6 +119,67 @@ define([
                         logger.error("OnChangeInputbox.widget.OnChangeInputbox.triggerMicroFlow: XAS error executing microflow");
                     }
                 });
+            }
+        },
+
+        // Handle validations.
+        _handleValidation: function (validations) {
+            logger.debug(this.id + "._handleValidation");
+            this._clearValidations();
+
+            var validation = validations[0];
+            var message = validation.getReasonByAttribute(this.name);
+
+            if (message) {
+                this._addValidation(message);
+                validation.removeAttribute(this.name);
+            }
+        },
+
+        // Clear validations.
+        _clearValidations: function () {
+            logger.debug(this.id + "._clearValidations");
+            domConstruct.destroy(this._alertDiv);
+            domClass.remove( this.domNode, 'has-error' );
+            this._alertDiv = null;
+        },
+       
+        // Add a validation.
+        _addValidation: function (message) {
+            logger.debug(this.id + "._addValidation");
+            if (this._alertDiv !== null) {
+                dojoHtml.set(this._alertDiv, message);
+            } else {
+                this._alertDiv = domConstruct.create("div", {
+                    "class": "alert alert-danger",
+                    "innerHTML": message
+                });
+                domConstruct.place(this._alertDiv, this.domNode);
+            }
+            domClass.add( this.domNode, 'has-error' );
+        },
+
+        // Reset subscriptions.
+        _resetSubscriptions: function () {
+            logger.debug(this.id + "._resetSubscriptions");
+            // Release handles on previous object, if any.
+            this.unsubscribeAll();
+
+            // When a mendix object exists create subscribtions.
+            if (this.obj) {
+                this.subscribe({
+                    guid: this.obj.getGuid(),
+                    attr: this.name,
+                    callback: dojoLang.hitch(this, function(obj) {
+                        this.changeInputBox();
+                    })
+                });
+                this.subscribe({
+                    guid: this.obj.getGuid(),
+                    val: true,
+                    callback: dojoLang.hitch(this, this._handleValidation)
+                });
+                this.changeInputBox();
             }
         }
     });
