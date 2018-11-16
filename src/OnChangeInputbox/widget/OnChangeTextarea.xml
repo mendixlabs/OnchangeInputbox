@@ -38,6 +38,7 @@
             <category>Events</category>
             <description/>
             <enumerationValues>
+                <enumerationValue key="doNothing">Do nothing</enumerationValue>
                 <enumerationValue key="callMicroflow">Call a microflow</enumerationValue>
                 <enumerationValue key="callNanoflow">Call a nanoflow</enumerationValue>
             </enumerationValues>
