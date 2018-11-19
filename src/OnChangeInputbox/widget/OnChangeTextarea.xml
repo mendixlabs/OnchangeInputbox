@@ -20,12 +20,7 @@
 	T4QgP+8GAHyJg9Cg4LMbAAAAAElFTkSuQmCC
     </icon>
     <properties>
-        <property key="entity" type="entity" required="true">
-            <caption>Entity</caption>
-            <category>Data source</category>
-            <description>The entity of the attribute to display</description>
-        </property>
-        <property key="attr" type="attribute" required="true">
+        <property key="name" type="attribute" required="true">
             <caption>Attribute</caption>
             <category>Data source</category>
             <description>The attribute to display</description>
@@ -33,8 +28,8 @@
                 <attributeType name="String"/>
             </attributeTypes>
         </property>
-        <property key="onChangeEvent" type="enumeration" defaultValue="callMicroflow">
-            <caption>OnChange event</caption>
+        <property key="onChangeEvent" type="enumeration" defaultValue="doNothing">
+            <caption>On change event</caption>
             <category>Events</category>
             <description/>
             <enumerationValues>
@@ -43,16 +38,38 @@
                 <enumerationValue key="callNanoflow">Call a nanoflow</enumerationValue>
             </enumerationValues>
         </property>
-        <property key="microflow" type="microflow" required="false">
-            <caption>Microflow</caption>
+        <property key="onChangeMicroflow" type="microflow" required="false">
+            <caption>On change microflow</caption>
             <category>Events</category>
             <description>The microflow to execute whenever input text changes</description>
             <returnType type="Void"/>
         </property>
-        <property key="nanoflow" type="nanoflow" required="false">
-            <caption>Nanoflow</caption>
+        <property key="onChangeNanoflow" type="nanoflow" required="false">
+            <caption>On change nanoflow</caption>
             <category>Events</category>
             <description>The nanoflow to execute whenever input text changes</description>
+            <returnType type="Void"/>
+        </property>
+        <property key="onLeaveEvent" type="enumeration" defaultValue="doNothing">
+            <caption>On leave event</caption>
+            <category>Events</category>
+            <description/>
+            <enumerationValues>
+                <enumerationValue key="doNothing">Do nothing</enumerationValue>
+                <enumerationValue key="callMicroflow">Call a microflow</enumerationValue>
+                <enumerationValue key="callNanoflow">Call a nanoflow</enumerationValue>
+            </enumerationValues>
+        </property>
+        <property key="onLeaveMicroflow" type="microflow" required="false">
+            <caption>On leave microflow</caption>
+            <category>Events</category>
+            <description>The microflow to execute on leave</description>
+            <returnType type="Void"/>
+        </property>
+        <property key="onLeaveNanoflow" type="nanoflow" required="false">
+            <caption>On leave nanoflow</caption>
+            <category>Events</category>
+            <description>The nanoflow to execute on leave</description>
             <returnType type="Void"/>
         </property>
         <property key="delay" type="integer" required="true" defaultValue="0">
@@ -73,7 +90,7 @@
         <property key="maxLength" type="integer" required="true" defaultValue="0">
             <caption>Maximum length</caption>
             <category>General</category>
-            <description/>
+            <description>The maximum allowed number of characters, set it to '0' for unlimited number of characters</description>
         </property>
         <property key="rows" type="integer" required="true" defaultValue="0">
             <caption>Number of lines</caption>
@@ -83,12 +100,13 @@
         <property key="textTooLongMsg" type="string" required="false">
             <caption>Text too long message</caption>
             <category>General</category>
-            <description/>
+            <description>This is the text displayed when the number of typed characters is higher than the maximum allowed number of characters</description>
         </property>
-        <property key="counterMsg" type="integer" required="true" defaultValue="0">
+        <property key="counterMsg" type="string" required="false" defaultValue="">
             <caption>Counter message</caption>
             <category>General</category>
-            <description/>
+            <description>The text displayed when typing in the text area. This text has 2 placeholders.The first placeholder shows the number of characters already typed and the second placeholder shows the maximum number of characters.E.g. You’ve used {1} characters of the {2} characters that are allowed.Please note in order to display this message "Maximum length" property should be greater than 0
+            </description>
         </property>
     </properties>
 </widget>
