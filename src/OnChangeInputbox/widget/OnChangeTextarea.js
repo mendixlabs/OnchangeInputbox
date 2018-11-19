@@ -1,143 +1,363 @@
 define([
-    "dojo/_base/declare", "mxui/widget/_WidgetBase",
-    "mxui/dom", "dojo/dom", "dojo/query", "dojo/dom-prop", "dojo/dom-geometry", "dojo/dom-class", "dojo/dom-style", "dojo/dom-construct", "dojo/_base/array", "dojo/_base/lang"
-], function (declare, _WidgetBase, dom, dojoDom, domQuery, domProp, domGeom, domClass, domStyle, domConstruct, dojoArray, dojoLang) {
+    "dojo/_base/declare",
+    "mxui/widget/_WidgetBase",
+    "dijit/_TemplatedMixin",
+    "dojo/dom-prop",
+    "dojo/dom-class",
+    "dojo/dom-construct",
+    "dojo/_base/lang",
+    "dojo/text!OnChangeInputbox/widget/template/OnChangeTextarea.html"
+], function(
+    declare,
+    _WidgetBase,
+    _TemplatedMixin,
+    domProp,
+    dojoClass,
+    dojoConstruct,
+    lang,
+    widgetTemplate
+) {
     "use strict";
 
-    return declare("OnChangeInputbox.widget.OnChangeTextarea", [_WidgetBase], {
-        //CACHES
-        _hasStarted: false,
-        divNode: "",
-        inputBox: "",
-        handle: "",
-        delay_timer: "",
-        currValue: "",
-        objId: null,
-        onChangeEvent: " ",
-        microflow: "",
-        nanoflow: null,
-        textarea: null,
-        _textLocked: false,
+    return declare(
+        "OnChangeInputbox.widget.OnChangeTextarea",
+        [_WidgetBase, _TemplatedMixin],
+        {
+            templateString: widgetTemplate,
+            delay_timer: null,
+            _contextObj: null,
+            _alertDiv: null,
+            _counterLabel: null,
+            _textTooLongMessageDiv: null,
+            _readOnly: false,
 
-        startup: function () {
-            if (this._hasStarted) {
-                return;
-            }
-
-            this._hasStarted = true;
-
-            var taNode = mxui.dom.create("div", {});
-            this.domNode.appendChild(taNode);
-            this.textarea = new mxui.widget.TextArea({
-                attributePath: this.entity + "/" + this.attr,
-                placeholder: this.placeholder,
-                maxLength: this.maxLength,
-                rows: this.rows,
-                textTooLongMsg: this.textTooLongMsg,
-                counterMsg: ""
-            }, taNode);
-            this.textarea.startup();
-
-            var self = this;
-            this.textarea._setValueAttr = function () {
-                if (!self._textLocked) {
-                    this.editNode.value = arguments[0];
+            postCreate: function() {
+                logger.debug(this.id + ".postCreate");
+                if (this.readOnly || this.checkDisabled()) {
+                    this._readOnly = true;
                 }
-                this.resize();
-            };
+                if (this.placeholder) {
+                    domProp.set(
+                        this.textareaNode,
+                        "placeholder",
+                        this.placeholder
+                    );
+                }
+                if (this.maxLength) {
+                    domProp.set(this.textareaNode, "maxLength", this.maxLength);
+                }
+                if (this.rows) {
+                    domProp.set(this.textareaNode, "rows", this.rows);
+                }
 
-            this.connect(this.textarea.domNode, "onkeyup", dojoLang.hitch(this, this.eventOnChange));
-            this.connect(this.textarea.domNode, "onfocus", dojoLang.hitch(this, this.eventInputFocus));
+                // if it's not ready only register event listeners
+                if (!this._readOnly) {
+                    this._setupEvents();
+                }
+            },
 
-            this.actLoaded();
-        },
+            update: function(obj, callback) {
+                logger.debug(this.id + ".update");
+                if (obj) {
+                    this._contextObj = obj;
+                    this.textareaNode.disabled = this._readOnly;
+                    this._resetSubscriptions();
+                    this._updateRendering(callback);
+                }
+            },
 
-        update: function (obj, callback) {
-            this.obj = obj;
-            this.textarea.update(obj, callback);
-        },
+            _updateRendering: function(callback) {
+                logger.debug(this.id + "._updateRendering");
+                this._clearValidations();
+                this._setTextarea();
+                // when maxLenght is set to 0 that means the text length is unlimited, and the counter message  & text too long message won't appear
+                if (this.maxLength > 0) {
+                    if (this.counterMsg.trim()) {
+                        this._setCounterMessage();
+                    }
+                    if (this.textTooLongMsg.trim()) {
+                        this._setTextTooLongMessage();
+                    }
+                }
+                if (callback && typeof callback === "function") {
+                    callback();
+                }
+            },
+            _setupEvents: function() {
+                logger.debug(this.id + "._setupEvents");
+                this.connect(
+                    this.textareaNode,
+                    "onkeyup",
+                    lang.hitch(this, this._eventOnChange)
+                );
+                this.connect(
+                    this.textareaNode,
+                    "onblur",
+                    lang.hitch(this, this._onLeaveAction)
+                );
+                this.connect(
+                    this.textareaNode,
+                    "onfocus",
+                    lang.hitch(this, this._eventInputFocus)
+                );
+            },
 
-        eventInputFocus: function () {
-            domClass.add(this.domNode, "MxClient_formFocus");
-        },
+            _setTextarea: function() {
+                logger.debug(this.id + "._setTextarea");
+                this.textareaNode.value = this._contextObj.get(this.name);
+            },
 
-        eventOnChange: function () {
-            if (this.obj.get(this.attr) !== this.inputBox.value) {
-                this._textLocked = true;
-                this.obj.set(this.attr, this.textarea.editNode.value);
-                if (this.chartreshold > 0) {
-                    if (this.textarea.editNode.value.length > this.chartreshold) {
-                        this.eventCheckDelay();
+            _eventInputFocus: function() {
+                logger.debug(this.id + " _eventInputFocus");
+                dojoClass.add(this.textareaNode, "mx-focus");
+            },
+
+            _eventOnChange: function() {
+                logger.debug(this.id + " _eventOnChange");
+                if (
+                    this._contextObj.get(this.name) !== this.textareaNode.value
+                ) {
+                    this._contextObj.set(this.name, this.textareaNode.value);
+                    if (this.chartreshold > 0) {
+                        if (
+                            this.textareaNode.value.length > this.chartreshold
+                        ) {
+                            this._eventCheckDelay();
+                        } else {
+                            clearTimeout(this.delay_timer);
+                        }
                     } else {
+                        this._eventCheckDelay();
+                    }
+                }
+            },
+
+            _eventCheckDelay: function() {
+                logger.debug(this.id + " _eventCheckDelay");
+                if (this.delay > 0) {
+                    if (this.delay_timer) {
                         clearTimeout(this.delay_timer);
                     }
+                    this.delay_timer = setTimeout(
+                        lang.hitch(this, this._onChangeAction),
+                        this.delay
+                    ); // in milliseconds, seconds * 1000 !
                 } else {
-                    this.eventCheckDelay();
+                    this._onChangeAction();
                 }
-            }
-        },
+            },
 
-        eventCheckDelay: function () {
-            if (this.delay > 0) {
+            _onChangeAction: function() {
+                logger.debug(this.id + " _onChangeAction");
+                this.delay_timer = null;
+                if (
+                    this.onChangeEvent === "callMicroflow" &&
+                    this.onChangeMicroflow
+                ) {
+                    this._executeMicroflow(this.onChangeMicroflow);
+                } else if (
+                    this.onChangeEvent === "callNanoflow" &&
+                    this.onChangeNanoflow.nanoflow &&
+                    this._contextObj
+                ) {
+                    this._executeNanoflow(this.onChangeNanoflow);
+                } else if (this.onChangeEvent === "doNothing") {
+                    return;
+                } else {
+                    mx.ui.error(
+                        "No action specified for " + this.onChangeEvent
+                    );
+                }
+            },
+            _onLeaveAction: function() {
+                logger.debug(this.id + "._onLeaveAction");
+                this.delay_timer = null;
+                if (
+                    this.onLeaveEvent === "callMicroflow" &&
+                    this.onLeaveMicroflow
+                ) {
+                    this._executeMicroflow(this.onLeaveMicroflow);
+                } else if (
+                    this.onLeaveEvent === "callNanoflow" &&
+                    this.onLeaveNanoflow.nanoflow &&
+                    this.mxcontext
+                ) {
+                    this._executeNanoflow(this.onLeaveNanoflow);
+                } else if (this.onLeaveEvent === "doNothing") {
+                    return;
+                } else {
+                    mx.ui.error("No action specified for " + this.onLeaveEvent);
+                }
+            },
+
+            _executeNanoflow: function(nanoflow) {
+                logger.debug(this.id + " _executeNanoflow");
+                if (nanoflow && this._contextObj) {
+                    mx.data.callNanoflow({
+                        nanoflow: nanoflow,
+                        origin: this.mxform,
+                        context: this.mxcontext,
+                        error: function(error) {
+                            mx.ui.error(
+                                "An error occurred while executing the Nanoflow: " +
+                                    error.message
+                            );
+                            console.error(error.message);
+                        }
+                    });
+                }
+            },
+
+            _executeMicroflow: function(microflow) {
+                logger.debug(this.id + " _executeMicroflow");
+                if (microflow && this._contextObj) {
+                    mx.data.action({
+                        origin: this.mxform,
+                        params: {
+                            actionname: microflow,
+                            applyto: "selection",
+                            guids: [this._contextObj.getGuid()]
+                        },
+                        error: function(error) {
+                            mx.ui.error(
+                                "An error occurred while executing the Microflow: " +
+                                    error.message
+                            );
+                            console.error(error.message);
+                        }
+                    });
+                }
+            },
+
+            _resetSubscriptions: function() {
+                logger.debug(this.id + "._resetSubscriptions");
+                // Release handles on previous object, if any.
+                this.unsubscribeAll();
+                // When a context object exists create subscribtions.
+                if (this._contextObj) {
+                    this.subscribe({
+                        guid: this._contextObj.getGuid(),
+                        attr: this.name,
+                        callback: lang.hitch(this, this._updateRendering)
+                    });
+                    // set validation handler
+                    this.subscribe({
+                        guid: this._contextObj.getGuid(),
+                        val: true,
+                        callback: lang.hitch(this, this._handleValidation)
+                    });
+                }
+            },
+
+            // Handle validations.
+            _handleValidation: function(validations) {
+                logger.debug(this.id + "._handleValidation");
+                // clear validation if any
+                this._clearValidations();
+
+                var validation = validations[0],
+                    feedbackMessage = validation.getReasonByAttribute(
+                        this.name
+                    );
+                if (this._readOnly) {
+                    validation.removeAttribute(this.name);
+                } else if (feedbackMessage) {
+                    this._addValidation(feedbackMessage);
+                    validation.removeAttribute(this.name);
+                }
+            },
+
+            _setCounterMessage: function() {
+                logger.debug(this.id + "._addCounterMessage");
+                // replace '{1}' ( if provided ) with the length of the entered text
+                var counterMessageString = this.counterMsg.trim();
+                if (counterMessageString.indexOf("{1}") >= 0) {
+                    counterMessageString = counterMessageString.replace(
+                        "{1}",
+                        this.textareaNode.value.length
+                    );
+                }
+                // replace '{2}' ( if provided ) with the max allowed length of the text
+                if (counterMessageString.indexOf("{2}") >= 0) {
+                    counterMessageString = counterMessageString.replace(
+                        "{2}",
+                        this.maxLength
+                    );
+                }
+                if (this._counterLabel) {
+                    // counter label is already mounted to the dom
+                    // update the text only
+                    domProp.set(
+                        this._counterLabel,
+                        "innerHTML",
+                        counterMessageString
+                    );
+                } else {
+                    // create counter label and append it to the widget node
+                    this._counterLabel = dojoConstruct.create("label", {
+                        class: "mx-textarea-counter",
+                        innerHTML: counterMessageString
+                    });
+                    dojoConstruct.place(this._counterLabel, this.domNode);
+                }
+            },
+
+            _setTextTooLongMessage: function() {
+                logger.debug(this.id + "._setTextTooLongMessage");
+                var textTooLongMessageString = this.textTooLongMsg.trim();
+                var txtLength = this.textareaNode.value.length;
+                if (txtLength > this.maxLength) {
+                    if (!this._textTooLongMessageDiv) {
+                        this._textTooLongMessageDiv = dojoConstruct.create(
+                            "div",
+                            {
+                                class:
+                                    "alert alert-danger mx-validation-message",
+                                innerHTML: textTooLongMessageString
+                            }
+                        );
+                        dojoConstruct.place(
+                            this._textTooLongMessageDiv,
+                            this.domNode
+                        );
+                    }
+                } else {
+                    if (this._textTooLongMessageDiv) {
+                        dojoConstruct.destroy(this._textTooLongMessageDiv);
+                        this._textTooLongMessageDiv = null;
+                    }
+                }
+            },
+            _addValidation: function(feedbackMessage) {
+                logger.debug(this.id + "._addValidation");
+                if (this._alertDiv !== null) {
+                    domProp.set(this._alertDiv, "innerHTML", feedbackMessage);
+                    return;
+                }
+                this._alertDiv = dojoConstruct.create("div", {
+                    class: "alert alert-danger",
+                    innerHTML: feedbackMessage
+                });
+                dojoConstruct.place(this._alertDiv, this.domNode);
+                dojoClass.add(this.domNode, "has-error");
+            },
+            _clearValidations: function() {
+                logger.debug(this.id + "._clearValidations");
+                if (this._alertDiv) {
+                    dojoConstruct.destroy(this._alertDiv);
+                    this._alertDiv = null;
+                    dojoClass.remove(this.domNode, "has-error");
+                }
+            },
+            uninitialize: function() {
+                logger.debug(this.id + ".uninitialize");
+                this.unsubscribeAll();
                 if (this.delay_timer) {
                     clearTimeout(this.delay_timer);
-                    this.delay_timer = setTimeout(dojoLang.hitch(this, this.onChangeAction), this.delay); // in milliseconds, seconds * 1000 !
-                } else {
-                    this.delay_timer = setTimeout(dojoLang.hitch(this, this.onChangeAction), this.delay); // in milliseconds, seconds * 1000 !
                 }
-            } else {
-                this.onChangeAction();
-            }
-        },
-
-        onChangeAction: function () {
-            this.delay_timer = null;
-
-            if (this.onChangeEvent === "callNanoflow" && this.nanoflow.nanoflow && this.mxcontext) {
-                this._executeNanoflow(this.nanoflow)
-            }
-            else if(this.onChangeEvent === "callMicroflow" && this.microflow) {
-                this._executeMicroflow(this.microflow);
-            } 
-            else if(this.onChangeEvent === "doNothing") {
-                return;
-            }
-            else {
-                mx.ui.error("No action specified for " + this.onChangeEvent)
-            }
-        },
-
-        _executeNanoflow: function(nanoflow) {
-            window.mx.data.callNanoflow({
-                nanoflow: nanoflow,
-                origin: this.mxform,
-                context: this.mxcontext,
-                callback: function() {},
-                error: function (error) {
-                    mx.ui.error("An error occurred while executing the on nanoflow: " + error.message);
-                }
-            });
-        },
-
-        _executeMicroflow: function (mf) {
-            if (mf && this.obj) {
-                mx.data.action({
-                    origin: this.mxform,
-                    params: {
-                        actionname: mf,
-                        applyto: "selection",
-                        guids: [this.obj.getGuid()]
-                    },
-                    callback: dojoLang.hitch(this, function () {
-                        this._textLocked = false;
-                    }),
-                    error: function () {
-                        mx.ui.error("OnChangeInputbox.widget.OnChangeTextarea.triggerMicroFlow: XAS error executing microflow");
-                    }
-                });
             }
         }
-    });
+    );
 });
 
 require(["OnChangeInputbox/widget/OnChangeTextarea"]);
