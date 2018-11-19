@@ -59,67 +59,73 @@ define([
             _updateRendering: function(callback) {
                 logger.debug(this.id + "._updateRendering");
                 this._clearValidations();
-                this.setInputBox();
+                this._setInputBox();
                 if (callback && typeof callback === "function") {
                     callback();
                 }
             },
             _setupEvents: function() {
+                logger.debug(this.id + "._setupEvents");
                 this.connect(
                     this.inputBox,
                     "onkeyup",
-                    lang.hitch(this, this.eventOnChange)
+                    lang.hitch(this, this._eventOnChange)
                 );
                 this.connect(
                     this.inputBox,
                     "onblur",
-                    lang.hitch(this, this.onLeaveAction)
+                    lang.hitch(this, this._onLeaveAction)
                 );
                 this.connect(
                     this.inputBox,
                     "onfocus",
-                    lang.hitch(this, this.eventInputFocus)
+                    lang.hitch(this, this._eventInputFocus)
                 );
             },
 
-            setInputBox: function() {
+            _setInputBox: function() {
+                logger.debug(this.id + "._setInputBox");
                 this.inputBox.value = this._contextObj.get(this.name);
             },
 
-            eventInputFocus: function() {
+            _eventInputFocus: function() {
+                logger.debug(this.id + "._eventInputFocus");
                 dojoClass.add(this.inputBox, "mx-focus");
             },
 
-            eventOnChange: function() {
+            _eventOnChange: function() {
+                logger.debug(this.id + "._eventOnChange");
                 if (this._contextObj.get(this.name) !== this.inputBox.value) {
                     this._contextObj.set(this.name, this.inputBox.value);
                     if (this.chartreshold > 0) {
                         if (this.inputBox.value.length > this.chartreshold) {
-                            this.eventCheckDelay();
+                            this._eventCheckDelay();
                         } else {
                             clearTimeout(this.delay_timer);
                         }
                     } else {
-                        this.eventCheckDelay();
+                        this._eventCheckDelay();
                     }
                 }
             },
 
-            eventCheckDelay: function() {
+            _eventCheckDelay: function() {
+                logger.debug(this.id + "._eventCheckDelay");
                 if (this.delay > 0) {
                     if (this.delay_timer) {
                         clearTimeout(this.delay_timer);
                     }
                     this.delay_timer = setTimeout(
-                        lang.hitch(this, this.onChangeAction),
+                        lang.hitch(this, this._onChangeAction),
                         this.delay
                     ); // in milliseconds, seconds * 1000 !
                 } else {
-                    this.onChangeAction();
+                    this._onChangeAction();
                 }
             },
 
-            onChangeAction: function() {
+            _onChangeAction: function() {
+                logger.debug(this.id + "._onChangeAction");
                 this.delay_timer = null;
                 if (
                     this.onChangeEvent === "callMicroflow" &&
@@ -129,7 +135,7 @@ define([
                 } else if (
                     this.onChangeEvent === "callNanoflow" &&
                     this.onChangeNanoflow.nanoflow &&
-                    this._contextObj
+                    this.mxcontext
                 ) {
                     this._executeNanoflow(this.onChangeNanoflow);
                 } else if (this.onChangeEvent === "doNothing") {
@@ -141,7 +147,8 @@ define([
                 }
             },
 
-            onLeaveAction: function() {
+            _onLeaveAction: function() {
+                logger.debug(this.id + "._onLeaveAction");
                 this.delay_timer = null;
                 if (
                     this.onLeaveEvent === "callMicroflow" &&
