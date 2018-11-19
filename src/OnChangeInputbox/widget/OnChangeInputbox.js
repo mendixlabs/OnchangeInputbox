@@ -87,7 +87,7 @@ define([
             },
 
             eventInputFocus: function() {
-                dojoClass.add(this.inputBox, "MxClient_formFocus");
+                dojoClass.add(this.inputBox, "mx-focus");
             },
 
             eventOnChange: function() {
