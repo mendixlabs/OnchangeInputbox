@@ -2,30 +2,18 @@ define([
     "dojo/_base/declare",
     "mxui/widget/_WidgetBase",
     "dijit/_TemplatedMixin",
-    "mxui/dom",
-    "dojo/dom",
-    "dojo/query",
     "dojo/dom-prop",
-    "dojo/dom-geometry",
     "dojo/dom-class",
-    "dojo/dom-style",
     "dojo/dom-construct",
-    "dojo/_base/array",
     "dojo/_base/lang",
     "dojo/text!OnChangeInputbox/widget/template/OnChangeInputbox.html"
 ], function(
     declare,
     _WidgetBase,
     _TemplatedMixin,
-    dom,
-    dojoDom,
-    domQuery,
     domProp,
-    domGeom,
-    domClass,
-    domStyle,
+    dojoClass,
     dojoConstruct,
-    dojoArray,
     lang,
     widgetTemplate
 ) {
@@ -36,23 +24,8 @@ define([
         [_WidgetBase, _TemplatedMixin],
         {
             templateString: widgetTemplate,
-
-            //CACHES
-            _hasStarted: false,
-            subHandle: null,
-            divNode: "",
-            inputBox: "",
-            handle: "",
-            delay_timer: "",
-            currValue: "",
+            delay_timer: null,
             _contextObj: null,
-
-            onChangeEvent: "",
-            onChangeMicroflow: "",
-            onChangeNanoflow: null,
-            onLeaveEvent: "",
-            onLeaveMicroflow: "",
-            onLeaveNanoflow: null,
             _alertDiv: null,
             _readOnly: false,
 
@@ -67,6 +40,7 @@ define([
                 if (this.showaspassword) {
                     domProp.set(this.inputBox, "type", "password");
                 }
+                // if it's not ready only register event listeners
                 if (!this._readOnly) {
                     this._setupEvents();
                 }
@@ -83,9 +57,10 @@ define([
             },
 
             _updateRendering: function(callback) {
+                logger.debug(this.id + "._updateRendering");
                 this._clearValidations();
                 this.setInputBox();
-                if (callback) {
+                if (callback && typeof callback === "function") {
                     callback();
                 }
             },
@@ -112,7 +87,7 @@ define([
             },
 
             eventInputFocus: function() {
-                domClass.add(this.inputBox, "MxClient_formFocus");
+                dojoClass.add(this.inputBox, "MxClient_formFocus");
             },
 
             eventOnChange: function() {
@@ -187,20 +162,25 @@ define([
             },
 
             _executeNanoflow: function(nanoflow) {
-                mx.data.callNanoflow({
-                    nanoflow: nanoflow,
-                    origin: this.mxform,
-                    context: this.mxcontext,
-                    error: function(error) {
-                        mx.ui.error(
-                            "An error occurred while executing the on nanoflow: " +
-                                error.message
-                        );
-                    }
-                });
+                logger.debug(this.id + " _executeNanoflow");
+                if (nanoflow && this._contextObj) {
+                    mx.data.callNanoflow({
+                        nanoflow: nanoflow,
+                        origin: this.mxform,
+                        context: this.mxcontext,
+                        error: function(error) {
+                            mx.ui.error(
+                                "An error occurred while executing the Nanoflow: " +
+                                    error.message
+                            );
+                            console.error(error.message);
+                        }
+                    });
+                }
             },
 
             _executeMicroflow: function(microflow) {
+                logger.debug(this.id + " _executeMicroflow");
                 if (microflow && this._contextObj) {
                     mx.data.action({
                         origin: this.mxform,
@@ -209,10 +189,12 @@ define([
                             applyto: "selection",
                             guids: [this._contextObj.getGuid()]
                         },
-                        error: function() {
+                        error: function(error) {
                             mx.ui.error(
-                                "OnChangeInputbox.widget.OnChangeInputbox.triggerMicroFlow: XAS error executing microflow"
+                                "An error occurred while executing the Microflow: " +
+                                    error.message
                             );
+                            console.error(error.message);
                         }
                     });
                 }
@@ -227,9 +209,7 @@ define([
                     this.subscribe({
                         guid: this._contextObj.getGuid(),
                         attr: this.name,
-                        callback: lang.hitch(this, function(guid) {
-                            this._updateRendering();
-                        })
+                        callback: lang.hitch(this, this._updateRendering)
                     });
                     // set validation handler
                     this.subscribe({
@@ -269,12 +249,14 @@ define([
                     innerHTML: feedbackMessage
                 });
                 dojoConstruct.place(this._alertDiv, this.domNode);
+                dojoClass.add(this.domNode, "has-error");
             },
             _clearValidations: function() {
                 logger.debug(this.id + "._clearValidations");
                 if (this._alertDiv) {
                     dojoConstruct.destroy(this._alertDiv);
                     this._alertDiv = null;
+                    dojoClass.remove(this.domNode, "has-error");
                 }
             },
             uninitialize: function() {
