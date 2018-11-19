@@ -3,34 +3,37 @@
 This widget creates an inputbox or textarea that lets you run a microflow or nanoflow every time a user changes the content, one key press at a time. It features a delay and a minimum character threshold to prevent excessive microflow or nanoflow calls.
 
 ## Contributing
+
 For more information on contributing to this repository visit [Contributing to a GitHub repository](https://world.mendix.com/display/howto50/Contributing+to+a+GitHub+repository)!
 
 ### Properties
 
-#### Inputbox
-Attribute: The attribute that is linked to the inputbox.
+#### OnchnageInputbox
 
-On change microflow: The microflow that is triggered when text in the inputbox is changed.
+**Attribute:** The attribute that is linked to the inputbox.
 
-On change nanoflow: The nanoflow that is triggered when text in the inputbox is changed.
+**On change microflow:** The microflow that is triggered when text in the inputbox is changed.
 
-On leave microflow: The microflow that is triggered when the inputbox loses focus.
+**On change nanoflow:** The nanoflow that is triggered when text in the inputbox is changed.
 
-On leave nanoflow: The nanoflow that is triggered when the inputbox loses focus.
+**On leave microflow:** The microflow that is triggered when the inputbox loses focus.
 
-Delay: *Optional* - The delay in milliseconds before the on change microflow or nanoflow is triggered.
+**On leave nanoflow:** The nanoflow that is triggered when the inputbox loses focus.
 
-Character Threshold: *Optional* - The minimum amount of characters required for the on change microflow or nanoflow to be triggered.
+**Delay:** _[Optional]_ The delay in milliseconds before the on change microflow or nanoflow is triggered.
 
-#### Textarea
-Attribute: The attribute that is linked to the inputbox.
+**Character Threshold:** _[Optional]_ The minimum amount of characters required for the on change microflow or nanoflow to be triggered.
 
-On change microflow: The microflow that is triggered whenever text in the textarea is changed.
+#### OnchangeTextarea
 
-On change nanoflow: The nanoflow that is triggered whenever text in the textarea is changed.
+**Attribute:** The attribute that is linked to the inputbox.
 
-Delay: *Optional* - The delay in milliseconds before the on change microflow or nanoflow is triggered.
+**On change microflow:** The microflow that is triggered whenever text in the textarea is changed.
 
-Character Threshold: *Optional* - The minimum amount of characters required for the on change microflow to be triggered.
+**On change nanoflow:** The nanoflow that is triggered whenever text in the textarea is changed.
 
-The attributes under *General* are exactly the same as those for a normal TextArea.
+**Delay:** _[Optional]_ The delay in milliseconds before the on change microflow or nanoflow is triggered.
+
+**Character Threshold:** _[Optional]_ The minimum amount of characters required for the on change microflow to be triggered.
+
+**The attributes under _General_ are exactly the same as those for a normal TextArea.**
