@@ -152,9 +152,9 @@ define([
                 this.delay_timer = null;
                 if (
                     this.onChangeEvent === "callMicroflow" &&
-                    this.onChangeMicroflow
+                    this.onchangemf
                 ) {
-                    this._executeMicroflow(this.onChangeMicroflow);
+                    this._executeMicroflow(this.onchangemf);
                 } else if (
                     this.onChangeEvent === "callNanoflow" &&
                     this.onChangeNanoflow.nanoflow &&
@@ -174,9 +174,9 @@ define([
                 this.delay_timer = null;
                 if (
                     this.onLeaveEvent === "callMicroflow" &&
-                    this.onLeaveMicroflow
+                    this.onleavemf
                 ) {
-                    this._executeMicroflow(this.onLeaveMicroflow);
+                    this._executeMicroflow(this.onleavemf);
                 } else if (
                     this.onLeaveEvent === "callNanoflow" &&
                     this.onLeaveNanoflow.nanoflow &&

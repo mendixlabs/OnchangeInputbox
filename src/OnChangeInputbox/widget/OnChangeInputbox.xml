@@ -38,7 +38,7 @@
                 <enumerationValue key="callNanoflow">Call a nanoflow</enumerationValue>
             </enumerationValues>
         </property>
-        <property key="onChangeMicroflow" type="microflow" required="false">
+        <property key="onchangemf" type="microflow" required="false">
             <caption>On change microflow</caption>
             <category>Events</category>
             <description>The microflow to execute whenever input text changes</description>
@@ -60,7 +60,7 @@
                 <enumerationValue key="callNanoflow">Call a nanoflow</enumerationValue>
             </enumerationValues>
         </property>
-        <property key="onLeaveMicroflow" type="microflow" required="false">
+        <property key="onleavemf" type="microflow" required="false">
             <caption>On leave microflow</caption>
             <category>Events</category>
             <description>The microflow to execute on leave</description>
