@@ -1,137 +1,280 @@
 define([
-    "dojo/_base/declare", "mxui/widget/_WidgetBase", "dijit/_TemplatedMixin",
-    "mxui/dom", "dojo/dom", "dojo/query", "dojo/dom-prop", "dojo/dom-geometry", "dojo/dom-class", "dojo/dom-style", "dojo/dom-construct", "dojo/_base/array", "dojo/_base/lang",
+    "dojo/_base/declare",
+    "mxui/widget/_WidgetBase",
+    "dijit/_TemplatedMixin",
+    "dojo/dom-prop",
+    "dojo/dom-class",
+    "dojo/dom-construct",
+    "dojo/_base/lang",
     "dojo/text!OnChangeInputbox/widget/template/OnChangeInputbox.html"
-], function(declare, _WidgetBase, _TemplatedMixin, dom, dojoDom, domQuery, domProp, domGeom, domClass, domStyle, domConstruct, dojoArray, dojoLang, widgetTemplate) {
+], function(
+    declare,
+    _WidgetBase,
+    _TemplatedMixin,
+    domProp,
+    dojoClass,
+    dojoConstruct,
+    lang,
+    widgetTemplate
+) {
     "use strict";
 
-    return declare("OnChangeInputbox.widget.OnChangeInputbox", [_WidgetBase, _TemplatedMixin], {
-        templateString: widgetTemplate,
+    return declare(
+        "OnChangeInputbox.widget.OnChangeInputbox",
+        [_WidgetBase, _TemplatedMixin],
+        {
+            templateString: widgetTemplate,
+            delay_timer: null,
+            _contextObj: null,
+            _alertDiv: null,
+            _readOnly: false,
 
-        //CACHES
-        _hasStarted: false,
-        subHandle: null,
-        divNode: "",
-        inputBox: "",
-        handle: "",
-        delay_timer: "",
-        currValue: "",
-        obj: null,
+            postCreate: function() {
+                logger.debug(this.id + ".postCreate");
+                if (this.readOnly || this.checkDisabled()) {
+                    this._readOnly = true;
+                }
+                if (this.placeholder) {
+                    domProp.set(this.inputBox, "placeholder", this.placeholder);
+                }
+                if (this.showaspassword) {
+                    domProp.set(this.inputBox, "type", "password");
+                }
+                // if it's not ready only register event listeners
+                if (!this._readOnly) {
+                    this._setupEvents();
+                }
+            },
 
-        startup: function() {
-            if (this._hasStarted) {
-                return;
-            }
-            this._hasStarted = true;
+            update: function(obj, callback) {
+                logger.debug(this.id + ".update");
+                if (obj) {
+                    this._contextObj = obj;
+                    this.inputBox.disabled = this._readOnly;
+                    this._resetSubscriptions();
+                    this._updateRendering(callback);
+                }
+            },
 
-            if (this.placeholder) {
-                domProp.set(this.inputBox, "placeholder", this.placeholder);
-            }
+            _updateRendering: function(callback) {
+                logger.debug(this.id + "._updateRendering");
+                this._clearValidations();
+                this._setInputBox();
+                if (callback && typeof callback === "function") {
+                    callback();
+                }
+            },
+            _setupEvents: function() {
+                logger.debug(this.id + "._setupEvents");
+                this.connect(
+                    this.inputBox,
+                    "onkeyup",
+                    lang.hitch(this, this._eventOnChange)
+                );
+                this.connect(
+                    this.inputBox,
+                    "onblur",
+                    lang.hitch(this, this._onLeaveAction)
+                );
+                this.connect(
+                    this.inputBox,
+                    "onfocus",
+                    lang.hitch(this, this._eventInputFocus)
+                );
+            },
 
-            if (this.showaspassword) {
-                domProp.set(this.inputBox, "type", "password");
-            }
+            _setInputBox: function() {
+                logger.debug(this.id + "._setInputBox");
+                this.inputBox.value = this._contextObj.get(this.name);
+            },
 
-            this.connect(this.inputBox, "onkeyup", dojoLang.hitch(this, this.eventOnChange));
-            this.connect(this.inputBox, "onblur", dojoLang.hitch(this, this.onLeaveMicroflow));
-            this.connect(this.inputBox, "onfocus", dojoLang.hitch(this, this.eventInputFocus));
+            _eventInputFocus: function() {
+                logger.debug(this.id + "._eventInputFocus");
+                dojoClass.add(this.inputBox, "mx-focus");
+            },
 
-            this.actLoaded();
-        },
-
-        update: function(obj, callback) {
-            this.obj = obj;
-            if (this.subHandle) {
-                this.unsubscribe(this.subHandle);
-                this.subHandle = null;
-            }
-
-            if (this.obj) {
-                // in some cases update may be called with a null obj
-                this.subHandle = this.subscribe({
-                    guid: obj.getGuid(),
-                    attr: this.name,
-                    callback: dojoLang.hitch(this, function(obj) {
-                        this.changeInputBox();
-                    })
-                });
-                this.changeInputBox();
-            }
-
-            if (callback) {
-                callback();
-            }
-        },
-
-        changeInputBox: function() {
-            this.inputBox.value = this.obj.get(this.name);
-        },
-
-        eventInputFocus: function() {
-            domClass.add(this.inputBox, "MxClient_formFocus");
-        },
-
-        eventOnChange: function() {
-            if (this.obj.get(this.name) !== this.inputBox.value) {
-                this.obj.set(this.name, this.inputBox.value);
-                mx.data.save({
-                    mxobj: this.obj,
-                    callback: dojoLang.hitch(this, function() {
-                        // CHECK TRESHOLD HERE.
-                        if (this.chartreshold > 0) {
-                            if (this.inputBox.value.length > this.chartreshold) {
-                                this.eventCheckDelay();
-                            } else {
-                                clearTimeout(this.delay_timer);
-                            }
+            _eventOnChange: function() {
+                logger.debug(this.id + "._eventOnChange");
+                if (this._contextObj.get(this.name) !== this.inputBox.value) {
+                    this._contextObj.set(this.name, this.inputBox.value);
+                    if (this.chartreshold > 0) {
+                        if (this.inputBox.value.length > this.chartreshold) {
+                            this._eventCheckDelay();
                         } else {
-                            this.eventCheckDelay();
+                            clearTimeout(this.delay_timer);
                         }
-                    })
-                });
-            }
-        },
+                    } else {
+                        this._eventCheckDelay();
+                    }
+                }
+            },
 
-        eventCheckDelay: function() {
-            if (this.delay > 0) {
+            _eventCheckDelay: function() {
+                logger.debug(this.id + "._eventCheckDelay");
+                if (this.delay > 0) {
+                    if (this.delay_timer) {
+                        clearTimeout(this.delay_timer);
+                    }
+                    this.delay_timer = setTimeout(
+                        lang.hitch(this, this._onChangeAction),
+                        this.delay
+                    ); // in milliseconds, seconds * 1000 !
+                } else {
+                    this._onChangeAction();
+                }
+            },
+
+            _onChangeAction: function() {
+                logger.debug(this.id + "._onChangeAction");
+                this.delay_timer = null;
+                if (
+                    this.onChangeEvent === "callMicroflow" &&
+                    this.onchangemf
+                ) {
+                    this._executeMicroflow(this.onchangemf);
+                } else if (
+                    this.onChangeEvent === "callNanoflow" &&
+                    this.onChangeNanoflow.nanoflow &&
+                    this.mxcontext
+                ) {
+                    this._executeNanoflow(this.onChangeNanoflow);
+                } else if (this.onChangeEvent === "doNothing") {
+                    return;
+                } else {
+                    mx.ui.error(
+                        "No action specified for " + this.onChangeEvent
+                    );
+                }
+            },
+
+            _onLeaveAction: function() {
+                logger.debug(this.id + "._onLeaveAction");
+                this.delay_timer = null;
+                if (
+                    this.onLeaveEvent === "callMicroflow" &&
+                    this.onleavemf
+                ) {
+                    this._executeMicroflow(this.onleavemf);
+                } else if (
+                    this.onLeaveEvent === "callNanoflow" &&
+                    this.onLeaveNanoflow.nanoflow &&
+                    this._contextObj
+                ) {
+                    this._executeNanoflow(this.onLeaveNanoflow);
+                } else if (this.onLeaveEvent === "doNothing") {
+                    return;
+                } else {
+                    mx.ui.error("No action specified for " + this.onLeaveEvent);
+                }
+            },
+
+            _executeNanoflow: function(nanoflow) {
+                logger.debug(this.id + " _executeNanoflow");
+                if (nanoflow && this._contextObj) {
+                    mx.data.callNanoflow({
+                        nanoflow: nanoflow,
+                        origin: this.mxform,
+                        context: this.mxcontext,
+                        error: function(error) {
+                            mx.ui.error(
+                                "An error occurred while executing the Nanoflow: " +
+                                    error.message
+                            );
+                            console.error(error.message);
+                        }
+                    });
+                }
+            },
+
+            _executeMicroflow: function(microflow) {
+                logger.debug(this.id + " _executeMicroflow");
+                if (microflow && this._contextObj) {
+                    mx.data.action({
+                        origin: this.mxform,
+                        params: {
+                            actionname: microflow,
+                            applyto: "selection",
+                            guids: [this._contextObj.getGuid()]
+                        },
+                        error: function(error) {
+                            mx.ui.error(
+                                "An error occurred while executing the Microflow: " +
+                                    error.message
+                            );
+                            console.error(error.message);
+                        }
+                    });
+                }
+            },
+
+            _resetSubscriptions: function() {
+                logger.debug(this.id + "._resetSubscriptions");
+                // Release handles on previous object, if any.
+                this.unsubscribeAll();
+                // When a context object exists create subscribtions.
+                if (this._contextObj) {
+                    this.subscribe({
+                        guid: this._contextObj.getGuid(),
+                        attr: this.name,
+                        callback: lang.hitch(this, this._updateRendering)
+                    });
+                    // set validation handler
+                    this.subscribe({
+                        guid: this._contextObj.getGuid(),
+                        val: true,
+                        callback: lang.hitch(this, this._handleValidation)
+                    });
+                }
+            },
+
+            // Handle validations.
+            _handleValidation: function(validations) {
+                logger.debug(this.id + "._handleValidation");
+                // clear validation if any
+                this._clearValidations();
+
+                var validation = validations[0],
+                    feedbackMessage = validation.getReasonByAttribute(
+                        this.name
+                    );
+                if (this._readOnly) {
+                    validation.removeAttribute(this.name);
+                } else if (feedbackMessage) {
+                    this._addValidation(feedbackMessage);
+                    validation.removeAttribute(this.name);
+                }
+            },
+
+            _addValidation: function(feedbackMessage) {
+                logger.debug(this.id + "._addValidation");
+                if (this._alertDiv !== null) {
+                    domProp.set(this._alertDiv, "innerHTML", feedbackMessage);
+                    return;
+                }
+                this._alertDiv = dojoConstruct.create("div", {
+                    class: "alert alert-danger",
+                    innerHTML: feedbackMessage
+                });
+                dojoConstruct.place(this._alertDiv, this.domNode);
+                dojoClass.add(this.domNode, "has-error");
+            },
+            _clearValidations: function() {
+                logger.debug(this.id + "._clearValidations");
+                if (this._alertDiv) {
+                    dojoConstruct.destroy(this._alertDiv);
+                    this._alertDiv = null;
+                    dojoClass.remove(this.domNode, "has-error");
+                }
+            },
+            uninitialize: function() {
+                logger.debug(this.id + ".uninitialize");
+                this.unsubscribeAll();
                 if (this.delay_timer) {
                     clearTimeout(this.delay_timer);
                 }
-                this.delay_timer = setTimeout(dojoLang.hitch(this, this.onChangeMicroflow), this.delay); // in milliseconds, seconds * 1000 !
-            } else {
-                this.onChangeMicroflow();
-            }
-        },
-
-        onChangeMicroflow: function() {
-            this.delay_timer = null;
-            this.executeMicroflow(this.onchangemf);
-        },
-
-        onLeaveMicroflow: function() {
-            this.delay_timer = null;
-            this.executeMicroflow(this.onleavemf);
-        },
-
-        executeMicroflow: function(mf) {
-            if (mf && this.obj) {
-                mx.data.action({
-                    store: {
-                        caller: this.mxform
-                    },
-                    params: {
-                        actionname: mf,
-                        applyto: "selection",
-                        guids: [this.obj.getGuid()]
-                    },
-                    callback: function() {},
-                    error: function() {
-                        logger.error("OnChangeInputbox.widget.OnChangeInputbox.triggerMicroFlow: XAS error executing microflow");
-                    }
-                });
             }
         }
-    });
+    );
 });
 
 require(["OnChangeInputbox/widget/OnChangeInputbox"]);
