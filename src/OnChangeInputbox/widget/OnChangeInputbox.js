@@ -29,8 +29,20 @@ define([
             _alertDiv: null,
             _readOnly: false,
 
+            log: function() {
+                var args = Array.prototype.slice.call(arguments);
+                if (this.id) {
+                    args.unshift(this.id);
+                }
+                if (mx && mx.logger && mx.logger.debug) {
+                    mx.logger.debug.apply(mx.logger, args);
+                } else {
+                    logger.debug.apply(logger, args);
+                }
+            },
+
             postCreate: function() {
-                logger.debug(this.id + ".postCreate");
+                this.log(".postCreate");
                 if (this.readOnly || this.checkDisabled()) {
                     this._readOnly = true;
                 }
@@ -47,7 +59,7 @@ define([
             },
 
             update: function(obj, callback) {
-                logger.debug(this.id + ".update");
+                this.log(".update");
                 if (obj) {
                     this._contextObj = obj;
                     this.inputBox.disabled = this._readOnly;
@@ -57,7 +69,7 @@ define([
             },
 
             _updateRendering: function(callback) {
-                logger.debug(this.id + "._updateRendering");
+                this.log("._updateRendering");
                 this._clearValidations();
                 this._setInputBox();
                 if (callback && typeof callback === "function") {
@@ -65,7 +77,7 @@ define([
                 }
             },
             _setupEvents: function() {
-                logger.debug(this.id + "._setupEvents");
+                this.log("._setupEvents");
                 this.connect(
                     this.inputBox,
                     "onkeyup",
@@ -84,17 +96,17 @@ define([
             },
 
             _setInputBox: function() {
-                logger.debug(this.id + "._setInputBox");
+                this.log("._setInputBox");
                 this.inputBox.value = this._contextObj.get(this.name);
             },
 
             _eventInputFocus: function() {
-                logger.debug(this.id + "._eventInputFocus");
+                this.log("._eventInputFocus");
                 dojoClass.add(this.inputBox, "mx-focus");
             },
 
             _eventOnChange: function() {
-                logger.debug(this.id + "._eventOnChange");
+                this.log("._eventOnChange");
                 if (this._contextObj.get(this.name) !== this.inputBox.value) {
                     this._contextObj.set(this.name, this.inputBox.value);
                     if (this.chartreshold > 0) {
@@ -110,7 +122,7 @@ define([
             },
 
             _eventCheckDelay: function() {
-                logger.debug(this.id + "._eventCheckDelay");
+                this.log("._eventCheckDelay");
                 if (this.delay > 0) {
                     if (this.delay_timer) {
                         clearTimeout(this.delay_timer);
@@ -125,7 +137,7 @@ define([
             },
 
             _onChangeAction: function() {
-                logger.debug(this.id + "._onChangeAction");
+                this.log("._onChangeAction");
                 this.delay_timer = null;
                 if (
                     this.onChangeEvent === "callMicroflow" &&
@@ -148,7 +160,7 @@ define([
             },
 
             _onLeaveAction: function() {
-                logger.debug(this.id + "._onLeaveAction");
+                this.log("._onLeaveAction");
                 this.delay_timer = null;
                 if (
                     this.onLeaveEvent === "callMicroflow" &&
@@ -169,7 +181,7 @@ define([
             },
 
             _executeNanoflow: function(nanoflow) {
-                logger.debug(this.id + " _executeNanoflow");
+                this.log(" _executeNanoflow");
                 if (nanoflow && this._contextObj) {
                     mx.data.callNanoflow({
                         nanoflow: nanoflow,
@@ -187,7 +199,7 @@ define([
             },
 
             _executeMicroflow: function(microflow) {
-                logger.debug(this.id + " _executeMicroflow");
+                this.log(" _executeMicroflow");
                 if (microflow && this._contextObj) {
                     mx.data.action({
                         origin: this.mxform,
@@ -208,7 +220,7 @@ define([
             },
 
             _resetSubscriptions: function() {
-                logger.debug(this.id + "._resetSubscriptions");
+                this.log("._resetSubscriptions");
                 // Release handles on previous object, if any.
                 this.unsubscribeAll();
                 // When a context object exists create subscribtions.
@@ -229,7 +241,7 @@ define([
 
             // Handle validations.
             _handleValidation: function(validations) {
-                logger.debug(this.id + "._handleValidation");
+                this.log("._handleValidation");
                 // clear validation if any
                 this._clearValidations();
 
@@ -246,7 +258,7 @@ define([
             },
 
             _addValidation: function(feedbackMessage) {
-                logger.debug(this.id + "._addValidation");
+                this.log("._addValidation");
                 if (this._alertDiv !== null) {
                     domProp.set(this._alertDiv, "innerHTML", feedbackMessage);
                     return;
@@ -259,7 +271,7 @@ define([
                 dojoClass.add(this.domNode, "has-error");
             },
             _clearValidations: function() {
-                logger.debug(this.id + "._clearValidations");
+                this.log("._clearValidations");
                 if (this._alertDiv) {
                     dojoConstruct.destroy(this._alertDiv);
                     this._alertDiv = null;
@@ -267,7 +279,7 @@ define([
                 }
             },
             uninitialize: function() {
-                logger.debug(this.id + ".uninitialize");
+                this.log(".uninitialize");
                 this.unsubscribeAll();
                 if (this.delay_timer) {
                     clearTimeout(this.delay_timer);
